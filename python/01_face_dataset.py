@@ -20,7 +20,7 @@ face_detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 
 # For each person, enter one numeric face id
 face_id = input('\n enter user id end press <return> ==>  ')
-face_name = input('\n enter user name end press <return> ==>  ')
+# face_name = input('\n enter user name end press <return> ==>  ')
 
 print("\n [INFO] Initializing face capture. Look the camera and wait ...")
 # Initialize individual sampling face count
@@ -39,7 +39,7 @@ while(True):
         count += 1
 
         # Save the captured image into the datasets folder
-        cv2.imwrite("dataset/" + str(face_id) + '-' + str(face_name) + str(count) + ".jpg", gray[y:y+h,x:x+w])
+        cv2.imwrite("dataset/" + str(face_id) + '-' + str(count) + ".jpg", gray[y:y+h,x:x+w])
 
         cv2.imshow('image', img)
 
