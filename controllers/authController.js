@@ -71,12 +71,12 @@ const register = async (req, res) => {
 
     const points = Calc.calcPoints({ handicap_precentage, birth_year, family_status, num_of_children })
 
-    const code = 00000
+    const code = '00000'
 
     await Mail.sendMail(email, 'email from node js', `wow!!! you successed  💯😂🤣😍😋💯
     num of points ${points} your code is ${code}`)
 
-    const userObject = { userId, firstName, lastName, handicap_precentage, points, phone, password: hashedPwd, email, birth_year, family_status, num_of_children, identity_card, handicap_card, blind_card }
+    const userObject = { userId, firstName, lastName, handicap_precentage, points, phone, password: hashedPwd, email, birth_year, family_status, num_of_children}//, identity_card, handicap_card, blind_card }
     const user = await userDal.addUser(userObject)
     if (user) {
         return res.status(201).json({
