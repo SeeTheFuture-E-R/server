@@ -22,9 +22,12 @@ font = cv2.FONT_HERSHEY_SIMPLEX
 #iniciate id counter
 id = 0
 
-# names related to ids: example ==> Marcelo: id=1,  etc
-names = ['None', 'Renana', 'Ester', 'Lea', 'Z', 'W'] 
+# print(('אף אחד').encode("utf-8"))
+# names = [Hebrew('אף אחד').text_only(), Hebrew('רננה').text_only(), Hebrew('אסתר').text_only(), Hebrew('לאה').text_only()]
+# print(names)
 
+# names related to ids: example ==> Marcelo: id=1,  etc
+names = ['None', 'Renana', 'Ester', 'Leah', 'w', 't', 'g', 'g', 'Billi']
 # Initialize and start realtime video capture
 cam = cv2.VideoCapture(0)
 cam.set(3, 640) # set video widht
@@ -62,7 +65,7 @@ while True:
         else:
             id = "unknown"
             confidence = "  {0}%".format(round(100 - confidence))
-        
+
         cv2.putText(img, str(id), (x+5,y-5), font, 1, (255,255,255), 2)
         cv2.putText(img, str(confidence), (x+5,y+h-5), font, 1, (255,255,0), 1)  
 

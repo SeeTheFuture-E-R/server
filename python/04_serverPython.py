@@ -117,7 +117,7 @@ def face_recognition():
     id = 0
 
     # names related to ids: example ==> Marcelo: id=1,  etc
-    names = ['None', 'Renana', 'Ester', 'Lea', 'Z', 'W'] 
+    names = ['None', 'Renana', 'Ester', 'Leah', 'Billi', 'Ester', 'Mamy', 'Ayelet', 'Billi', 'Renana', 'Chana']
 
     # Initialize and start realtime video capture
     cam = cv2.VideoCapture(0)
