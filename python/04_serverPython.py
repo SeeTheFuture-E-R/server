@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, HTTPException, UploadFile,Request
+from fastapi import FastAPI, HTTPException, File, UploadFile,Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import pandas as pd
@@ -11,14 +11,25 @@ import os
 
 app = FastAPI()
 
+origins = ["http://localhost:3000"]
+
 app.add_middleware(
     CORSMiddleware,
-    #allow_origins=origins,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+#try to get image from user
+@app.post("/getPicture")
+async def create_upload_file(file: UploadFile = File(...)):
+    print(file)
+    img = await file.read()
+    file_path = os.path.join("./", file.filename)
+    with open(file_path, "wb") as temp_file:
+        temp_file.write(img)
+    return {"filename": file.filename}
 
 @app.post("/01")
 def hello():
