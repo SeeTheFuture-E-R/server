@@ -4,6 +4,7 @@ const {v4:uuid} = require("uuid")
 const friendsDal = require("../dal/dalfriend")
 const bookDal = require("../dal/dalBook")
 const upload = require("../utils/upload")
+const productsDal = require("../dal/dalProduct")
 
 const uploadImageToFriend = async (req, res) =>{
     const {friendId} = req.params
@@ -73,6 +74,7 @@ const uploadImageForBook=async (req, res) =>{
         res.status(500).send("No file")
     }
     const file = req.file
+    console.log(req.file.originalname, "*************************************8")
     const folder = path.join(__dirname, "..", "public", "images", "books")
     const filename = `${uuid()}_${file.originalname}`
     const fileUrl  =`${folder}/${filename}`
@@ -89,4 +91,31 @@ const uploadImageForBook=async (req, res) =>{
     }
 
 }
-module.exports = {uploadImageToFriend, uploadFilesToUser, uploadImageForBook}
+const uploadImageForProduct=async (req, res) =>{
+    const {productId} = req.params
+
+    if(!productId){
+        res.status(400).send("please send book id")
+    }
+    if(!req.file){
+        res.status(500).send("No file")
+    }
+    const file = req.file
+    console.log(req.file,"$$$$$$$$$$$$$$$",productId,"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+    const folder = path.join(__dirname, "..", "public", "images", "products")
+    const filename = `${uuid()}_${file.originalname}`
+    const fileUrl  =`${folder}/${filename}`
+
+    console.log("producttttttttttttttttttttttttttttttttttttttttttttttttt")
+    try{
+        await fsPromises.writeFile(fileUrl, file.buffer)
+        const product = await productsDal.updatePicturePath(filename, productId)
+        console.log(product)
+        return res.json({location: fileUrl, name:filename })
+    }
+    catch(err){
+        res.status(500).send(err)
+    }
+
+}
+module.exports = {uploadImageToFriend, uploadFilesToUser, uploadImageForBook, uploadImageForProduct}

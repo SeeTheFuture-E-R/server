@@ -9,7 +9,7 @@ class ProductsDal {
     }
 
     addProduct = async (newProduct) => {
-
+        console.log("in dlproduct", newProduct)
         const product = await Products.create(newProduct)
         return product
     }
@@ -38,6 +38,13 @@ class ProductsDal {
        
         const product = await Products.update(newProduct, { where: { productId: productId } })
         return product
+    }
+
+    updatePicturePath = async (picture, productId) => {
+        
+        await Products.update({ picture: picture }, { where: { productId: productId } })
+        const returnProductId = await Products.findByPk(productId)
+        return (returnProductId)
     }
 
    

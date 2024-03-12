@@ -19,11 +19,13 @@ const verifyJWT = (req, res, next) => {
         process.env.ACCESS_TOKEN_SECRET,
         (err, decoded) => {
         15
-        if (err) return res.status(403).json({ message: 'Forbidden' })
+        if (err) 
+            return res.status(403).json({ message: 'Forbidden' })
+        console.log("😎🙂😕😉😎💛😋😎😎")
         req.user = decoded
         next()
         }
-        )
+    )
 
 }
 module.exports = verifyJWT

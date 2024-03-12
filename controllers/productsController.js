@@ -13,17 +13,21 @@ class ProductsController {
     })
 
     addProduct = async (req, res) => {
+        console.log("😣😣😣😣😣😣😣😣😣😣😣😣😣😣")
         const { name, description, price, company, picture, category} = req.body
+        console.log(req.body)
         // Confirm data
-        if ( !name || !price || !picture||!category) {
+        if ( !name || !price ||!category) {
             return res.status(400).json({ message: 'All fields are required' })
         }
         
         const product = await ProductsDal.addProduct({ name, description, price, company, picture, category})
         if (product) { // Created
-            return res.status(201).json({ message: 'New product created' })
+            console.log("create new product")
+            return res.status(201).json(product)
         }
         else {
+            console.log("faild in new product")
             return res.status(400).json({ message: 'Invalid product data received' })
         }
 
