@@ -5,6 +5,55 @@ const friendsDal = require("../dal/dalfriend")
 const bookDal = require("../dal/dalBook")
 const upload = require("../utils/upload")
 const productsDal = require("../dal/dalProduct")
+const { createCanvas, loadImage } = require('canvas');
+const fs = require('fs');
+
+
+// Function to convert image to grayscale
+function convertToGrayscale(image) {
+    console.log(image,"imageeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+    const canvas = createCanvas(image.width, image.height);
+    const ctx = canvas.getContext('2d');
+
+    ctx.drawImage(image, 0, 0, image.width, image.height);
+    const imageData = ctx.getImageData(0, 0, image.width, image.height);
+    const data = imageData.data;
+    console.log(data,"dataaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+    for (let i = 0; i < data.length; i += 4) {
+        const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+        data[i] = avg;      // Red channel
+        data[i + 1] = avg;  // Green channel
+        data[i + 2] = avg;  // Blue channel
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
+}
+
+// Function to save the canvas as an image
+function saveCanvas(canvas, path) {
+    const buffer = canvas.toBuffer('image/png');
+    fs.writeFileSync(path, buffer);
+}
+
+// Main function to process the image
+async function processImage(image) {
+    try {
+        const grayscaleCanvas = convertToGrayscale(image);
+
+        // Save 5 copies of the grayscale image
+        for (let i = 1; i <= 5; i++) {
+            saveCanvas(grayscaleCanvas, `grayscale_copy_${i}.png`);
+        }
+
+        console.log('Image processing complete. 5 copies saved.');
+    } catch (error) {
+        console.error('Error processing image:', error);
+    }
+}
+
+
 
 const uploadImageToFriend = async (req, res) =>{
     const {friendId} = req.params
@@ -16,7 +65,8 @@ const uploadImageToFriend = async (req, res) =>{
         res.status(500).send("No file")
     }
     const file = req.file
-    console.log(file)
+    console.log(file, "fileeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+    processImage(file)
     const folder = path.join(__dirname, "..", "public", "images", "friends")
     const filename = `${uuid()}_${req.file.originalname}`
     const fileUrl  =`${folder}/${filename}`
