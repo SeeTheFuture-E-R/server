@@ -57,28 +57,34 @@ async function processImage(image) {
 
 const uploadImageToFriend = async (req, res) =>{
     const {friendId} = req.params
-
+    
     if(!friendId){
         res.status(400).send("please send friend id")
     }
+
     if(!req.file){
         res.status(500).send("No file")
     }
-    const file = req.file
-    console.log(file, "fileeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
-    processImage(file)
-    const folder = path.join(__dirname, "..", "public", "images", "friends")
-    const filename = `${uuid()}_${req.file.originalname}`
-    const fileUrl  =`${folder}/${filename}`
+  try{
+        const file = req.file
 
+        const folder = path.join(__dirname, "..", "public", "images", "friends")
+        const Objfriend = await friendsDal.getFriendById(friendId)
+        if (!Objfriend) {
+            return res.status(404).send("Friend not found")
+        }
 
-    try{
-        await fsPromises.writeFile(fileUrl, req.file.buffer)
+        const filename = `${friendId}-${Objfriend.name}.png`
+        const fileUrl  =`${folder}/${filename}`
+        console.log(friendId, filename ,"kkkkkkkkkkkkkkkkkddddddddddddddddddddkkkkkkkkk")
+
+        await fsPromises.writeFile(fileUrl, file.buffer)
         const friend = await friendsDal.updatePicturePath(filename, friendId)
         console.log(friend)
         return res.json({location: fileUrl, name:filename })
     }
     catch(err){
+        console.log(err)
         res.status(500).send(err)
     }
 

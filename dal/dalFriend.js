@@ -36,11 +36,24 @@ class FriendsDal {
 
     })
 
+    getFriendById = (async (friendId) => {
+
+        const friend = await friends.findOne({ where: { friendId: friendId } })
+        return (friend);
+
+    })
+
     updatePicturePath = (async(newPath, friendId)=>{
-        console.log("😂😍😊")
-        await friends.update({picturePath: newPath}, {where:{friendId: friendId}})
+        console.log("😂😍kkkkkkkkkkkk😊", friendId, "😂😍kkkkkkkkkkkk😊")
+        try{
+            await friends.update({picturePath: newPath}, {where:{friendId: friendId}})
         const friend = await friends.findByPk(friendId)
-        return friend
+        return (friend)
+        }
+        catch(e){
+            console.log(e, "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+        }
+
     })
 
     getfriendsByUserId = (async (userId) => {

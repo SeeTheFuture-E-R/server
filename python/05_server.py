@@ -1,14 +1,14 @@
 import uvicorn
-from fastapi import FastAPI, HTTPException, File, UploadFile,Request
+from fastapi import FastAPI, HTTPException, File, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 import pandas as pd
 import asyncio
 from PIL import Image
 import cv2
 import numpy as np
 import os 
+import json
 
 app = FastAPI()
 
@@ -84,104 +84,195 @@ def hello():
 
 @app.post("/02")
 async def train_dataset():
-    path = 'dataset'
-    recognizer = cv2.face.LBPHFaceRecognizer_create()
-    detector = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
-
-    def getImagesAndLabels(path):
-        imagePaths = [os.path.join(path, f) for f in os.listdir(path)]
-        faceSamples = []
-        ids = []
-        names = ['ester', 'renana','lea', 'bili', 'ester', 'ester', 'lea','lea' , "ester", "aba"]
-        for imagePath in imagePaths:
-            try:
-                PIL_img = Image.open(imagePath).convert('L')  # Convert it to grayscale
-                img_numpy = np.array(PIL_img, 'uint8')
-
-                # Attempt to extract the ID
-                filename = os.path.split(imagePath)[-1]
-                parts = filename.split(".")[0].split("-")
-                print(parts)
-                if parts[0].isdigit():
-                    id = int(parts[0])
-                
-                elif parts[1].isdigit():
-                    id = 5
-                    print(parts[1])
-                else:
-                    raise ValueError("No valid ID found in filename")
-                if id - 1 < len(names):
-                    print(names[id - 1])
-                else:
-                    print("ID is out of bounds")
-
-                faces = detector.detectMultiScale(img_numpy)
-
-                for (x, y, w, h) in faces:
-                    faceSamples.append(img_numpy[y:y+h, x:x+w])
-                    ids.append(id)
-
-            except Exception as e:
-                print(f"Skipping file {imagePath}, error: {e}")
-
-        return faceSamples, ids
-
     try:
-        print("\n[INFO] Training faces. It will take a few seconds. Wait ...")
-        faces, ids = getImagesAndLabels(path)
+        # Use a simple path for the trainer directory
+        trainer_dir = "trainer"
+        if not os.path.exists(trainer_dir):
+            os.makedirs(trainer_dir)
+        
+        # Simple paths for model and mappings
+        model_path = os.path.join(trainer_dir, "model.yml")
+        mappings_path = os.path.join(trainer_dir, "mappings.json")
 
-        if len(faces) == 0 or len(ids) == 0:
-            raise HTTPException(status_code=400, detail="No faces or IDs found in the dataset")
+        # For the input images path
+        base_path = os.path.abspath(os.path.dirname(__file__))
+        images_path = os.path.join(base_path, '..', 'public', 'images', 'friends')
+        images_path = os.path.normpath(images_path)
+        
+        if not os.path.exists(images_path):
+            raise HTTPException(status_code=400, detail=f"Images directory not found: {images_path}")
+            
+        recognizer = cv2.face.LBPHFaceRecognizer_create()
+        detector = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
 
-        recognizer.train(faces, np.array(ids))
-        recognizer.write('trainer/trainer.yml')  # recognizer.save() worked on Mac, but not on Pi
+        def getImagesAndLabels(path):
+            imagePaths = [os.path.join(path, f) for f in os.listdir(path) if f.endswith(('.jpg', '.jpeg', '.png'))]
+            print(f"\n[INFO] Found {len(imagePaths)} images")
+            
+            faceSamples = []
+            ids = []
+            name_mappings = {}
 
-        print("\n[INFO] {0} faces trained. Exiting Program".format(len(np.unique(ids))))
-        return {"message": f"{len(np.unique(ids))} faces trained successfully"}
+            FACE_SIZE = (100, 100)
+            for imagePath in imagePaths:
+                try:
+                    PIL_img = Image.open(imagePath).convert('L')
+                    img_numpy = np.array(PIL_img, 'uint8')
+
+                    filename = os.path.splitext(os.path.basename(imagePath))[0]
+                    parts = filename.split("-")
+                    
+                    if len(parts) != 2:
+                        print(f"Skipping {filename}: Invalid format. Expected format: ID-name")
+                        continue
+
+                    try:
+                        id = int(parts[0])
+                        name = parts[1]
+                    except ValueError:
+                        print(f"Skipping {filename}: ID must be a number")
+                        continue
+
+                    name_mappings[str(id)] = name
+                    print(f"Found ID: {id}, Name: {name}")
+
+                    faces = detector.detectMultiScale(
+                        img_numpy,
+                        scaleFactor=1.1,
+                        minNeighbors=5,
+                        minSize=(30, 30)
+                    )
+
+                    if len(faces) == 0:
+                        print(f"No face detected in {filename}")
+                        continue
+
+                    for (x, y, w, h) in faces:
+                        face_img = img_numpy[y:y+h, x:x+w]
+                        face_resized = cv2.resize(face_img, FACE_SIZE)
+                        faceSamples.append(face_resized)
+                        ids.append(id)
+                        print(f"Added face for {name} (ID: {id})")
+
+                except Exception as e:
+                    print(f"Error processing {imagePath}: {str(e)}")
+                    continue
+
+            if not faceSamples:
+                raise ValueError("No faces detected in any images")
+
+            return np.array(faceSamples), np.array(ids, dtype=np.int32), {"names": name_mappings}
+
+        print("\n[INFO] Starting training process...")
+        faces, ids, mapping_data = getImagesAndLabels(images_path)
+
+        if len(faces) == 0:
+            raise HTTPException(status_code=400, detail="No faces detected in any images")
+
+        print(f"\n[INFO] Training with {len(faces)} faces and {len(set(ids))} unique IDs")
+        recognizer.train(faces, ids)
+
+        print(f"Saving model to: {model_path}")
+        recognizer.write(model_path)
+        
+        with open(mappings_path, 'w', encoding='utf-8') as f:
+            json.dump(mapping_data, f, ensure_ascii=False, indent=2)
+
+        return {
+            "message": "Training completed successfully",
+            "faces_trained": len(faces),
+            "unique_ids": len(set(ids)),
+            "mappings": mapping_data
+        }
 
     except Exception as e:
-        print(f"Error during training: {e}")
-        raise HTTPException(status_code=500, detail=f"Error during training: {e}")
+        print(f"Training error: {str(e)}")
+        print(f"Current working directory: {os.getcwd()}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
 @app.post("/predict")
 async def predict_face(file: UploadFile = File(...)):
-    names = ['ester', 'renana','lea', 'bili', 'ester', 'ester', 'lea', 'lea' , "ester", "aba"]
     try:
-        # Read the image file
+        # Use simple paths matching training
+        model_path = "trainer/model.yml"
+        mappings_path = "trainer/mappings.json"
+
+        if not os.path.exists(model_path) or not os.path.exists(mappings_path):
+            raise FileNotFoundError("Model or mappings file not found")
+
+        # Load mappings
+        with open(mappings_path, 'r', encoding='utf-8') as f:
+            mapping_data = json.load(f)
+            name_mappings = mapping_data.get("names", {})
+
+        # Load model
+        recognizer = cv2.face.LBPHFaceRecognizer_create()
+        recognizer.read(model_path)
+
+        # Process uploaded image
         contents = await file.read()
-        np_img = np.fromstring(contents, np.uint8)
+        np_img = np.frombuffer(contents, np.uint8)
         img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
 
         # Convert the image to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        # Detect faces
+        # Detect faces using same parameters as training
         faces = faceCascade.detectMultiScale(
             gray,
-            scaleFactor=1.2,
+            scaleFactor=1.1,
             minNeighbors=5,
             minSize=(30, 30)
         )
 
+        print(f"\n[INFO] faces {faces}")
+        
         if len(faces) == 0:
             return {"message": "No faces detected"}
 
+        results = []
+        FACE_SIZE = (100, 100)  # Same size as training
         for (x, y, w, h) in faces:
-            roi_gray = gray[y:y+h, x:x+w]
-            id, confidence = recognizer.predict(roi_gray)
-            print(f"Predicted ID: {id}, Confidence: {confidence}")
-        name=""
-        if id - 1 < len(names):
-            name = names[id - 1]
-        return {"message": "Prediction successful", "id": id, "name": name, "confidence": confidence}
+            face_roi = gray[y:y+h, x:x+w]
+            face_roi = cv2.resize(face_roi, FACE_SIZE)
+            
+            id, confidence = recognizer.predict(face_roi)
+            print(f"\n[INFO] id {id} confidence {confidence}")
+            name = name_mappings.get(str(id), "unknown")
+            confidence_percentage = 100 - min(round(confidence), 100)
+            
+            results.append({
+                "id": int(id),
+                "name": name,
+                "confidence": f"{confidence_percentage}%",
+                "box": {
+                    "x": int(x),
+                    "y": int(y),
+                    "width": int(w),
+                    "height": int(h)
+                }
+            })
 
+        return {
+            "message": "Prediction successful",
+            "results": results,
+            "total_faces": len(results)
+        }
+
+    except FileNotFoundError as e:
+        print(f"File not found error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Model or mappings file not found. Please ensure training has been completed."
+        )
     except Exception as e:
         print(f"Error during prediction: {e}")
-        raise HTTPException(status_code=500, detail=f"Error during prediction: {e}")    
-        
-
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error during prediction: {str(e)}"
+        )
 
 async def ff():
     config = uvicorn.Config(app)

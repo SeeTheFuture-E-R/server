@@ -1,4 +1,3 @@
-
 const express = require("express");
 const friendsRouter = express.Router();
 const friendsController = require("../controllers/friendsController");
@@ -7,6 +6,9 @@ const verifyJWT = require("../middleware/verifyJWT")
 const multer = require('multer');
 const storage = multer.memoryStorage()
 const upload = multer({ storage: storage })
+const path = require('path');
+const fs = require('fs');
+
 
 friendsRouter.route("/")
     .get(verifyJWT, friendsController.getAllfriends)
