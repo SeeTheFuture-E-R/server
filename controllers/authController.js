@@ -42,51 +42,66 @@ const login = async (req, res) => {
 
 
 const register = async (req, res) => {
+    try {
+        console.log(req.body.userId)
+        console.log(req.body.password)
+        console.log("👌")
+        // identity_card, handicap_card, blind_card 
+        const { userId, firstName, lastName, handicap_precentage, phone, email, password, birth_year, family_status, num_of_children} = req.body
+        console.log(userId, firstName, lastName, email, password)
+        if (!userId || !firstName || !lastName || !email || !password) {
 
-    console.log(req.body.userId)
-    console.log(req.body.password)
-    console.log("👌")
-    // identity_card, handicap_card, blind_card 
-    const { userId, firstName, lastName, handicap_precentage, phone, email, password, birth_year, family_status, num_of_children} = req.body
-    console.log(userId, firstName, lastName, email, password)
-    if (!userId || !firstName || !lastName || !email || !password) {
+            return res.status(400).json({ message: 'All fields are required' })
+        }
+        const duplicate = await User.findOne({ where: { userId: userId } })
+        if (duplicate) {
+            return res.status(409).json({ message: "Duplicate userId" })
+        }
 
-        return res.status(400).json({ message: 'All fields are required' })
+        if (!Validator.isEmail(email))
+            return res.status(400).json({ message: 'The email is invalid' })
+
+        if (!Validator.isIdentityCard(userId, 'he-IL'))
+            return res.status(400).json({ message: 'The UserId is invalid' })
+
+        if (phone && !Validator.isMobilePhone(phone, 'he-IL'))
+            return res.status(400).json({ message: 'The phone is invalid' })
+
+        const hashedPwd = await bcrypt.hash(password, 10);
+
+        const points = Calc.calcPoints({ handicap_precentage, birth_year, family_status, num_of_children })
+
+        const code = '00000'
+
+        // Send email with better error handling
+        try {
+            await Mail.sendMail(
+                email, 
+                'Welcome to Our Platform', 
+                `Welcome to our platform! 
+                Your registration was successful.
+                Number of points: ${points}
+                Your verification code is: ${code}`
+            );
+        } catch (emailError) {
+            console.error('Failed to send email:', emailError);
+            // Continue with registration even if email fails
+        }
+
+        const userObject = { userId, firstName, lastName, handicap_precentage, points, phone, password: hashedPwd, email, birth_year, family_status, num_of_children }
+        const user = await userDal.addUser(userObject)
+        
+        if (user) {
+            return res.status(201).json({
+                message: `New user ${user.firstName} ${user.lastName} created`
+            })
+        } else {
+            return res.status(400).json({ message: 'Invalid user data received' })
+        }
+    } catch (error) {
+        console.error('Registration error:', error);
+        return res.status(500).json({ message: 'Error during registration process' });
     }
-    const duplicate = await User.findOne({ where: { userId: userId } })
-    if (duplicate) {
-        return res.status(409).json({ message: "Duplicate userId" })
-    }
-
-    if (!Validator.isEmail(email))
-        return res.status(400).json({ message: 'The email is invalid' })
-
-    if (!Validator.isIdentityCard(userId, 'he-IL'))
-        return res.status(400).json({ message: 'The UserId is invalid' })
-
-    if (phone && !Validator.isMobilePhone(phone, 'he-IL'))
-        return res.status(400).json({ message: 'The phone is invalid' })
-
-    const hashedPwd = await bcrypt.hash(password, 10);
-
-    const points = Calc.calcPoints({ handicap_precentage, birth_year, family_status, num_of_children })
-
-    const code = '00000'
-
-    await Mail.sendMail(email, 'email from node js', `wow!!! you successed  💯😂🤣😍😋💯
-    num of points ${points} your code is ${code}`)
-
-    const userObject = { userId, firstName, lastName, handicap_precentage, points, phone, password: hashedPwd, email, birth_year, family_status, num_of_children}//, identity_card, handicap_card, blind_card }
-    const user = await userDal.addUser(userObject)
-    if (user) {
-        return res.status(201).json({
-            message: `New user ${user.firstName} ${user.lastName} created`
-        })
-    }
-    else {
-        return res.status(400).json({ message: 'Invalid user data received' })
-    }
-
 }
 
 module.exports = { login, register }

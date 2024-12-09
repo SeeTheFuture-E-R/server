@@ -4,6 +4,7 @@ const { register } = require("../controllers/authController");
 const userRouter = express.Router();
 const userController = require("../controllers/userController");
 const verifyJWT = require("../middleware/verifyJWT");
+const uploadController = require("../controllers/uploadController")
 const multer = require("multer")
 
 var storage = multer.diskStorage({
@@ -15,9 +16,14 @@ var storage = multer.diskStorage({
     }
   });
   
-const upload = multer({ storage: storage })
-const uploadController = require("../controllers/uploadController")
 
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+});
 
 userRouter.route("/")
     .get(verifyJWT,userController.getAllUsers)
@@ -26,6 +32,6 @@ userRouter.route("/:id")
     .delete(verifyJWT,userController.deleteUser)
     .put(verifyJWT,userController.updateUser)
     .get(verifyJWT,userController.getUserByUserId)
-    .post(upload.array('files'), uploadController.uploadFilesToUser)
+    .post(upload.array('file'), uploadController.uploadFilesToUser);
 
 module.exports = userRouter;

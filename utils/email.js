@@ -1,53 +1,33 @@
-var nodemailer = require('nodemailer');
-
-// https://support.google.com/mail/answer/185833?hl=iw
+const nodemailer = require('nodemailer');
 
 class Mail {
-
-  sendMail = (to, subject, text) => {
-    // const transporter = nodemailer.createTransport({
-    //   service: 'gmail',
-    //   name: 'Ester&Renana Zinger&Grilus',
-    //   // host: "smtp.gmail.com",
-    //   // port: 587,
-    //   // secure: false,
-    //   auth: {
-    //     user: 'erseethefuture@gmail.com',
-    //     pass: 'tx,r&rbbv9660'
-    //   }
-    // });
-    const transporter = nodemailer.createTransport({
-      service: 'outlook',
-      auth: {
-        user: '36325266906@mby.co.il',
-        pass: 'Student@264'
-      }
+    static transporter = nodemailer.createTransport({
+        service: 'gmail',  // or any other email service
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_APP_PASSWORD  // Use app-specific password for Gmail
+        }
     });
 
+    static async sendMail(to, subject, text) {
+        try {
+            const mailOptions = {
+                from: process.env.EMAIL_USER,
+                to: to,
+                subject: subject,
+                text: text,
+                // You can also send HTML content using the html property:
+                // html: '<h1>Hello</h1><p>Your content here</p>'
+            };
 
-    const mailOptions = {
-      from: transporter,
-      to: to,
-      subject: subject,
-      text: text,
+            const info = await this.transporter.sendMail(mailOptions);
+            console.log('Email sent successfully:', info.response);
+            return true;
+        } catch (error) {
+            console.error('Error sending email:', error);
+            throw error;
+        }
     }
-try{
-    transporter.sendMail(mailOptions, function (error, info) {
-      if (error) {
-        console.log(error);
-      } 
-      else {
-        console.log('Email sent: ' + info.response);
-      }
-    });
-  }
-  catch(err){
-    console.log(err)
-  }
-  }
 }
 
-const mail = new Mail()
-module.exports = mail
-
-// https://support.google.com/mail/answer/185833?hl=iw
+module.exports = Mail;

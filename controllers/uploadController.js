@@ -7,7 +7,7 @@ const upload = require("../utils/upload")
 const productsDal = require("../dal/dalProduct")
 const { createCanvas, loadImage } = require('canvas');
 const fs = require('fs');
-
+const stream = require('stream');
 
 // Function to convert image to grayscale
 function convertToGrayscale(image) {
@@ -90,34 +90,54 @@ const uploadImageToFriend = async (req, res) =>{
 
 }
 
-const uploadFilesToUser = async(req, res)=>{
-    const {id} = req.params
-    const {files} = req.files||{}
-    console.log(id)
+const uploadFilesToUser = async(req, res) => {
+    const { id } = req.params;
+    const files = req.files;
 
-    console.log(file)
-
-
-    if(!id){
-        res.status(400).send("please send friend id")
+    if (!id) {
+        return res.status(400).send("Please send user id");
     }
-    if(!file){
-        res.status(500).send("No file")
+    if (!files || files.length === 0) {
+        return res.status(400).send("No files uploaded");
     }
-    // const folder = path.join(__dirname, "..", "public", "images")
-    // const filename = `${uuid()}_${req.file.originalname}`
-    // const fileUrl  =`${folder}/${filename}`
 
+    try {
+        const folder = path.join(__dirname, "..", "public", "documents", "pdfs");
+        await fsPromises.mkdir(folder, { recursive: true });
 
-    // try{
-    //     await fsPromises.writeFile(fileUrl, req.file.buffer)
-    //     const friend = await friendsDal.updatePicturePath(fileUrl, friendId)
-    //     console.log(friend)
-    //     return res.json({location: fileUrl, name:filename })
-    // }catch(err){
-    //     res.status(500).send(err)
-    // }
-    else res.send("bjhgj")
+        const uploadedFiles = [];
+        
+        for (const file of files) {
+            if (!file.mimetype.includes('pdf')) {
+                throw new Error(`File ${file.originalname} is not a PDF`);
+            }
+
+            const filename = `${uuid()}_${file.originalname}`;
+            const fileUrl = path.join(folder, filename);
+            
+            // Using streams to properly handle binary data
+            await new Promise((resolve, reject) => {
+                const writeStream = fs.createWriteStream(fileUrl);
+                const bufferStream = new stream.PassThrough();
+
+                writeStream.on('finish', resolve);
+                writeStream.on('error', reject);
+                
+                bufferStream.end(file.buffer);
+                bufferStream.pipe(writeStream);
+            });
+            
+            uploadedFiles.push({
+                location: fileUrl,
+                name: filename
+            });
+        }
+
+        return res.json(uploadedFiles);
+    } catch (err) {
+        console.error('Upload error:', err);
+        return res.status(500).send(err.message);
+    }
 }
 
 const uploadImageForBook=async (req, res) =>{

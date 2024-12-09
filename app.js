@@ -39,6 +39,12 @@ app.use('/mail', mailRouter)
 app.use("/upload", uploadRouter)
 app.use("/paypal", paypalRouter)
 
+app.post('*', (req, res) => {
+    console.log('Available routes:', app._router.stack
+        .filter(r => r.route)
+        .map(r => `${Object.keys(r.route.methods)} ${r.route.path}`));
+    res.status(404).send('Route not found');
+});
 
 app.use((req, res) => {
     res.status(404)
